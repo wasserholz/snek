@@ -1,0 +1,197 @@
+<html>
+<head>
+</head>
+<body>
+<canvas id="display" width="400" height="400"></canvas>
+
+<script>
+var canvas = document.getElementById("display");
+var ctx = canvas.getContext("2d");
+
+var width = 400;
+var height = 400;
+
+var snakeColors = [
+    "yellow",
+    "blue",
+    "red",
+    "green"
+]
+
+var keys = {
+    left: false,
+    right: false
+};
+
+var players = 1;
+
+var now = Date.now();
+var then = now;
+
+var snakes = [];
+
+var velo = 40; //pixels per second
+var angleVelo = 360 / 180 * Math.PI; //30 degrees per second
+
+window.onload = function() {
+    window.addEventListener("keydown", keyState(true), true);
+    window.addEventListener("keyup", keyState(false), true);
+
+    start();
+};
+
+function snakeFactory(index, pos) {
+    var snake = {
+        color: snakeColors[index],
+        angle: 0,
+        oldAngle: -1,
+        points: [pos]
+    }
+
+    return snake;
+}
+
+function start() {
+    drawBackground();
+    for (var i = 0; i < players; i++) {
+        var pos = [];
+        pos.push(20 + 50 * i);
+        pos.push(20 + 50 * i);
+
+        snakes.push(snakeFactory(i, pos));
+    }
+
+    requestAnimationFrame(frame);
+}
+
+
+function frame() {
+
+    now = Date.now();
+    var delta = Math.min(1, (now - then) / 1000);
+
+    then = now;
+
+    update(delta);
+    render();
+
+    requestAnimationFrame(frame);
+}
+
+function update(delta) {
+    snakes.forEach(function(snake) {
+
+        if (keys.left === true) {
+            snake.angle += angleVelo * delta;
+        } else if(keys.right === true) {
+            snake.angle -= angleVelo * delta;
+        }
+
+        var currentPos = snake.points[snake.points.length - 1];
+        var newPos = getNewPos(currentPos, snake.angle, velo * delta);
+
+        if (snake.angle === snake.oldAngle) {
+            snake.points.pop();
+        } else {
+            snake.oldAngle = snake.angle;
+        }
+
+        snake.points.push(newPos);
+
+        if (isSnakeIntersecting(snake.points)) {
+            drawBackground();
+            snake.points = [[40, 40]];
+            snake.oldAngle = -10;
+        }
+    });
+    
+}
+
+function render() {
+    snakes.forEach(function(snake) {
+        drawSnake(snake);
+    });
+}
+
+function drawBackground() {
+    ctx.rect(0, 0, width, height);
+    ctx.fillStyle = "black";
+    ctx.fill();
+}
+
+function drawSnake(snake) {
+    ctx.beginPath();
+    ctx.strokeStyle = snake.color;
+    ctx.lineWidth = "1";
+    for (var i = Math.max(snake.points.length - 2, 1); i < snake.points.length; i++) {
+        ctx.moveTo(snake.points[i - 1][0], snake.points[i - 1][1]);
+        ctx.lineTo(snake.points[i][0], snake.points[i][1]);
+        ctx.stroke();
+    }
+}
+
+function getNewPos(currentPos, angle, length) {
+    var x = currentPos[0] + length * Math.cos(angle);
+    var y = currentPos[1] - length * Math.sin(angle);
+
+    return [x, y];
+}
+
+function keyState(state) {
+    return function keyDowned(event) {
+        switch (event.keyCode) {
+            case 37:
+                keys.left = state;
+                break;
+            case 39:
+                keys.right = state;
+                break;
+            default:
+                break;
+        }
+    };
+}
+
+function isSnakeIntersecting(points) {
+    if (points.length < 4) {
+        return false;
+    }
+
+    var p1 = points[points.length - 2];
+    var p2 = points[points.length - 1];
+
+    for (var i = 0; i < points.length - 3; i++) {
+        var p3 = points[i];
+        var p4 = points[i + 1];
+        if (lineSegmentIntersection(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], p4[0], p4[1])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function lineSegmentIntersection(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
+
+    var s1_x, s1_y, s2_x, s2_y;
+    s1_x = p1_x - p0_x;
+    s1_y = p1_y - p0_y;
+    s2_x = p3_x - p2_x;
+    s2_y = p3_y - p2_y;
+
+    var s, t;
+    s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
+    t = ( s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
+    {
+        // Collision detected
+        //console.log("intersect: ", p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y)
+        return true;
+    }
+
+    return false; // No collision
+}
+</script>
+</body>
+</html>
